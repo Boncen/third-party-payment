@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>支付测试</title>
+  </head>
+  <body>
+    <input type="text" id="input" placeholder="输入支付金额" />
+    <div>
+      <button id="btn">微信支付</button>
+    </div>
+    <div id="tip">
+
+    </div>
+  </body>
+  <script>
+    const url = "https://18601f3v15.vicp.fun";
+
+    const fetchUrl = async function () {
+      const response = await fetch(`${url}/testpay?fee=${input.value}`, {
+        method: "POST",
+      });
+      return response.json();
+    };
+
+    window.onload = function () {
+      console.log("ready!");
+      const input = document.getElementById("input");
+      const btn = document.getElementById("btn");
+      const tip = document.getElementById("tip");
+
+      btn.onclick = async function () {
+        const result = await fetchUrl();
+        console.log("fetch result:", result);
+        tip.innerHTML = JSON.stringify(result);
+        if (result.return_code == "000000") {
+          WeixinJSBridge.invoke(
+            "getBrandWCPayRequest",
+            result.pay_info,
+            function (res) {
+              if (res.err_msg == "get_brand_wcpay_request:ok") {
+                // 使用以上方式判断前端返回,微信团队郑重提示：
+                //res.err_msg将在用户支付成功后返回ok，但并不保证它绝对可靠。
+              }
+            }
+          );
+        }
+      };
+    };
+  </script>
+</html>

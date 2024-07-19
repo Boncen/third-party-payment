@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,8 +21,9 @@ string url = "https://shlefu.candypay.com/AMPS/unifiedPay/gateway";
 string mchtId = "";
 string devId = "";
 string secret = "";
+string appid = "";
 
-app.MapGet("/testpay", async () =>
+app.MapPost("/testpay", async (int fee) =>
 {
     PayParamsModel model = new PayParamsModel()
     {
@@ -32,37 +32,40 @@ app.MapGet("/testpay", async () =>
         dev_id = devId,
         mcht_id = mchtId,
         mch_create_ip = "127.0.0.1",
-        nonce_str = "pyOF58ElztA7a9XFlWprodXsjSDhcVAd",
-        // open_id = "yOF58ElztA7a9XFlWprodXsjS",
-        buyer_id = "yOF58ElztA7a9XFlWprodXsjS",
-        out_order_no = "O123456678",
-        total_fee = 10,
+        nonce_str = "pyOF58ElztA7a9XFlWprodXsjSDhcVAd", // 随机字符串，需生成
+        open_id = "oyTNK6tcjV1Q35pZPR8iY_76PI0E",       // 用户openid
+        // buyer_id = "yOF58ElztA7a9XFlWprodXsjS",
+        out_order_no = "O" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+        total_fee = fee,
         txn_num = "unified_js_pay",
+        sub_appid = appid,
+        notify_url = "https://18601f3v15.vicp.fun/notify"
     };
     string sign = getSignStr(model);
     model.sign = sign;
-
-    HttpContent content = new StringContent(System.Text.Json.JsonSerializer.Serialize(model));
+    var modelJson = System.Text.Json.JsonSerializer.Serialize(model);
+    HttpContent content = new StringContent(modelJson);
+    await File.AppendAllTextAsync("req_rsp.txt", DateTime.Now.ToLongTimeString() + modelJson + Environment.NewLine);
     HttpClient client = new HttpClient();
     var rsp = await client.PostAsync(url, content);
     var rspStr = await rsp.Content.ReadAsStringAsync();
+    await File.AppendAllTextAsync("req_rsp.txt", DateTime.Now.ToLongTimeString() + rspStr + Environment.NewLine);
     return rspStr;
 })
 .WithName("pay")
 .WithOpenApi();
-
-// app.MapPost("/test", async ([FromBody] Object req) =>
-// {
-//     await File.AppendAllTextAsync("test.txt", DateTime.Now.ToLongTimeString() + System.Text.Json.JsonSerializer.Serialize(req) + Environment.NewLine);
-//     return "success";
-// });
 
 app.MapPost("/notify", async ([FromBody] NotifyRequestModel req) =>
 {
     await File.AppendAllTextAsync("notifyContent.txt", DateTime.Now.ToLongTimeString() + System.Text.Json.JsonSerializer.Serialize(req) + Environment.NewLine);
     return "success";
 });
-
+// app.MapPost("/notify", async ([FromBody] dynamic req) =>
+// {
+//     await File.AppendAllTextAsync("notifyContent2.txt", DateTime.Now.ToLongTimeString() + System.Text.Json.JsonSerializer.Serialize(req) + Environment.NewLine);
+//     return "success";
+// });
+app.UseStaticFiles();
 app.Run();
 
 string getSignStr(PayParamsModel model)
@@ -90,6 +93,7 @@ string getSignStr(PayParamsModel model)
         sb.Append(item.Key + "=" + item.Value + "&");
     }
     string beforeMd5 = sb.ToString() + secret;
+    Console.WriteLine(beforeMd5);
     var md5 = MD5Encrypt32(beforeMd5).ToUpper();
     return md5;
 }
@@ -151,8 +155,11 @@ class PayParamsModel
 
 }
 
+
+
 class NotifyRequestModel
 {
+    
     /// <summary>
     /// 用户标识
     /// </summary>
@@ -237,5 +244,41 @@ class NotifyRequestModel
     /// 第三方商户订单号  第三方商户单号,可在支持的商户扫码退款
     /// </summary>
     public string? third_order_no { get; set; }
-
+    /// <summary>
+    /// 
+    /// </summary>
+    public string date_time { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string mcht_id { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string nonce_str { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string out_order_no { get; set; }
+ 
+    /// <summary>
+    /// 
+    /// </summary>
+    public string return_code { get; set; }
+    /// <summary>
+    /// 处理完成！
+    /// </summary>
+    public string return_msg { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string sign { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string txn_num { get; set; }
+    /// <summary>
+    /// 
+    /// </summary>
+    public string version { get; set; }
 }
